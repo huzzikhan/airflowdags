@@ -20,7 +20,7 @@ CDE_CONN_ID = "dl_cde"
 CDE_JOB_NAME = "simple-cdp-sales-etl"
 IMPALA_CONN_ID = "data_hubimpala"
 
-Now
+
 default_args = {
     "owner": "data-engineering",
     "retries": 1,
