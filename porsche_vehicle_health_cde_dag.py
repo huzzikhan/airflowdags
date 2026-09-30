@@ -22,7 +22,22 @@ from pipeline_settings import (
     AWS_REGION,
 )
 
-SQL_DIR = Path(__file__).resolve().parent / "sql"
+DAG_DIR = Path(__file__).resolve().parent
+SQL_DIR = DAG_DIR / "sql"
+_SQL_FILES = (
+    "create_iceberg_tables.sql",
+    "create_parquet_staging_tables.sql",
+    "load_iceberg_tables.sql",
+    "validate_iceberg_tables.sql",
+)
+for _sql_name in _SQL_FILES:
+    _sql_path = SQL_DIR / _sql_name
+    if not _sql_path.is_file():
+        raise FileNotFoundError(
+            f"Missing Impala SQL file {_sql_path}. "
+            f"Deploy the sql/ folder next to this DAG file (same directory as pipeline_settings.py)."
+        )
+
 BUSINESS_DATE_TEMPLATE = (
     "{{ dag_run.conf.get('business_date', macros.datetime.utcnow().strftime('%Y-%m-%d')) }}"
 )
@@ -44,7 +59,7 @@ with DAG(
     start_date=pendulum.datetime(2026, 7, 9, tz="UTC"),
     schedule=None,
     catchup=False,
-    template_searchpath=[str(SQL_DIR)],
+    template_searchpath=[str(DAG_DIR), str(SQL_DIR)],
     params={
         "analytics_database": Param(default=ANALYTICS_DATABASE, type="string"),
         "curated_s3_root": Param(default=CURATED_S3_ROOT, type="string"),
@@ -58,7 +73,7 @@ with DAG(
     create_iceberg_tables = SQLExecuteQueryOperator(
         task_id="create_iceberg_tables",
         conn_id=IMPALA_CONNECTION_ID,
-        sql="create_iceberg_tables.sql",
+        sql="sql/create_iceberg_tables.sql",
         split_statements=True,
         return_last=False,
     )
@@ -74,7 +89,7 @@ with DAG(
     create_parquet_staging_tables = SQLExecuteQueryOperator(
         task_id="create_parquet_staging_tables",
         conn_id=IMPALA_CONNECTION_ID,
-        sql="create_parquet_staging_tables.sql",
+        sql="sql/create_parquet_staging_tables.sql",
         split_statements=True,
         return_last=False,
     )
@@ -82,7 +97,7 @@ with DAG(
     load_iceberg_tables = SQLExecuteQueryOperator(
         task_id="load_iceberg_tables",
         conn_id=IMPALA_CONNECTION_ID,
-        sql="load_iceberg_tables.sql",
+        sql="sql/load_iceberg_tables.sql",
         split_statements=True,
         return_last=False,
     )
@@ -90,7 +105,7 @@ with DAG(
     validate_iceberg_tables = SQLExecuteQueryOperator(
         task_id="validate_iceberg_tables",
         conn_id=IMPALA_CONNECTION_ID,
-        sql="validate_iceberg_tables.sql",
+        sql="sql/validate_iceberg_tables.sql",
         split_statements=True,
         return_last=False,
     )
